@@ -1,0 +1,36 @@
+[0.374s] Invoking command in '/home/max/patrolling-robot/ros2_ws/src/my_nav2_package': PYTHONPATH=/home/max/patrolling-robot/ros2_ws/build/my_nav2_package/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/max/patrolling-robot/ros2_ws/install/my_nav2_package/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/my_nav2_package build --build-base /home/max/patrolling-robot/ros2_ws/build/my_nav2_package/build install --record /home/max/patrolling-robot/ros2_ws/build/my_nav2_package/install.log --single-version-externally-managed install_data
+[0.490s] running egg_info
+[0.490s] creating ../../build/my_nav2_package/my_nav2_package.egg-info
+[0.491s] writing ../../build/my_nav2_package/my_nav2_package.egg-info/PKG-INFO
+[0.491s] writing dependency_links to ../../build/my_nav2_package/my_nav2_package.egg-info/dependency_links.txt
+[0.491s] writing entry points to ../../build/my_nav2_package/my_nav2_package.egg-info/entry_points.txt
+[0.491s] writing requirements to ../../build/my_nav2_package/my_nav2_package.egg-info/requires.txt
+[0.491s] writing top-level names to ../../build/my_nav2_package/my_nav2_package.egg-info/top_level.txt
+[0.491s] writing manifest file '../../build/my_nav2_package/my_nav2_package.egg-info/SOURCES.txt'
+[0.500s] reading manifest file '../../build/my_nav2_package/my_nav2_package.egg-info/SOURCES.txt'
+[0.500s] writing manifest file '../../build/my_nav2_package/my_nav2_package.egg-info/SOURCES.txt'
+[0.500s] running build
+[0.500s] running build_py
+[0.500s] creating /home/max/patrolling-robot/ros2_ws/build/my_nav2_package/build
+[0.500s] creating /home/max/patrolling-robot/ros2_ws/build/my_nav2_package/build/lib
+[0.500s] creating /home/max/patrolling-robot/ros2_ws/build/my_nav2_package/build/lib/my_nav2_package
+[0.500s] copying my_nav2_package/__init__.py -> /home/max/patrolling-robot/ros2_ws/build/my_nav2_package/build/lib/my_nav2_package
+[0.500s] copying my_nav2_package/navigation_node.py -> /home/max/patrolling-robot/ros2_ws/build/my_nav2_package/build/lib/my_nav2_package
+[0.501s] running install
+[0.501s] running install_lib
+[0.501s] creating /home/max/patrolling-robot/ros2_ws/install/my_nav2_package/lib/python3.10/site-packages/my_nav2_package
+[0.501s] copying /home/max/patrolling-robot/ros2_ws/build/my_nav2_package/build/lib/my_nav2_package/__init__.py -> /home/max/patrolling-robot/ros2_ws/install/my_nav2_package/lib/python3.10/site-packages/my_nav2_package
+[0.501s] copying /home/max/patrolling-robot/ros2_ws/build/my_nav2_package/build/lib/my_nav2_package/navigation_node.py -> /home/max/patrolling-robot/ros2_ws/install/my_nav2_package/lib/python3.10/site-packages/my_nav2_package
+[0.501s] byte-compiling /home/max/patrolling-robot/ros2_ws/install/my_nav2_package/lib/python3.10/site-packages/my_nav2_package/__init__.py to __init__.cpython-310.pyc
+[0.502s] byte-compiling /home/max/patrolling-robot/ros2_ws/install/my_nav2_package/lib/python3.10/site-packages/my_nav2_package/navigation_node.py to navigation_node.cpython-310.pyc
+[0.502s] running install_data
+[0.502s] creating /home/max/patrolling-robot/ros2_ws/install/my_nav2_package/share/ament_index
+[0.502s] creating /home/max/patrolling-robot/ros2_ws/install/my_nav2_package/share/ament_index/resource_index
+[0.502s] creating /home/max/patrolling-robot/ros2_ws/install/my_nav2_package/share/ament_index/resource_index/packages
+[0.502s] copying resource/my_nav2_package -> /home/max/patrolling-robot/ros2_ws/install/my_nav2_package/share/ament_index/resource_index/packages
+[0.502s] copying package.xml -> /home/max/patrolling-robot/ros2_ws/install/my_nav2_package/share/my_nav2_package
+[0.502s] running install_egg_info
+[0.503s] Copying ../../build/my_nav2_package/my_nav2_package.egg-info to /home/max/patrolling-robot/ros2_ws/install/my_nav2_package/lib/python3.10/site-packages/my_nav2_package-0.0.0-py3.10.egg-info
+[0.503s] running install_scripts
+[0.513s] writing list of installed files to '/home/max/patrolling-robot/ros2_ws/build/my_nav2_package/install.log'
+[0.525s] Invoked command in '/home/max/patrolling-robot/ros2_ws/src/my_nav2_package' returned '0': PYTHONPATH=/home/max/patrolling-robot/ros2_ws/build/my_nav2_package/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/max/patrolling-robot/ros2_ws/install/my_nav2_package/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/my_nav2_package build --build-base /home/max/patrolling-robot/ros2_ws/build/my_nav2_package/build install --record /home/max/patrolling-robot/ros2_ws/build/my_nav2_package/install.log --single-version-externally-managed install_data
