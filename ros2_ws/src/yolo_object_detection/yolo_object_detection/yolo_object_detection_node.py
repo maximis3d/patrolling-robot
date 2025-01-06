@@ -12,7 +12,7 @@ class YOLOObjectDetectionNode(Node):
         super().__init__('yolo_object_detection_node')
         
         self.bridge = CvBridge()
-        self.model = YOLO('yolov8n.pt') 
+        self.model = YOLO('/home/max/patrolling-robot/ros2_ws/dataset/runs/detect/train2/weights/best.pt') 
         self.subscription = self.create_subscription(
             Image, '/camera/image_raw', self.image_callback, 10)
         self.report_publisher = self.create_publisher(String, '/object_detection_report', 10)

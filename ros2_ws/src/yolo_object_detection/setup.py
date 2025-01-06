@@ -24,7 +24,8 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "yolo_object_detection_node = yolo_object_detection.yolo_object_detection_node:main"
+            "yolo_object_detection_node = yolo_object_detection.yolo_object_detection_node:main",
+            "yolo_image_saver_node = yolo_object_detection.yolo_image_saver_node:main"
         ],
     },
 )
