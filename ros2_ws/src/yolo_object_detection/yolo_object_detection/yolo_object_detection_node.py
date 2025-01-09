@@ -1,4 +1,4 @@
-# yolo_object_detection_node.py (Updated for RViz2 Image Display)
+# yolo_object_detection_node.py (Updated for Default YOLO)
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
@@ -12,7 +12,8 @@ class YOLOObjectDetectionNode(Node):
         super().__init__('yolo_object_detection_node')
         
         self.bridge = CvBridge()
-        self.model = YOLO('/home/max/patrolling-robot/ros2_ws/dataset/runs/detect/train2/weights/best.pt') 
+        # Load the default YOLO model (YOLOv8 nano model)
+        self.model = YOLO('yolov8n.pt')  
         self.subscription = self.create_subscription(
             Image, '/camera/image_raw', self.image_callback, 10)
         self.report_publisher = self.create_publisher(String, '/object_detection_report', 10)
@@ -20,12 +21,14 @@ class YOLOObjectDetectionNode(Node):
 
     def image_callback(self, msg):
         try:
+            # Convert ROS image to OpenCV format
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
 
+            # Perform object detection using YOLO
             results = self.model(cv_image)
             detections = results[0].boxes.data.cpu().numpy()  
 
-            
+            # Loop through detections and annotate image
             for detection in detections:
                 x1, y1, x2, y2, conf, cls = detection
                 class_name = self.model.names[int(cls)]
@@ -42,6 +45,7 @@ class YOLOObjectDetectionNode(Node):
                 self.report_publisher.publish(report_msg)
                 self.get_logger().info(report_msg.data)
 
+            # Convert the annotated image back to a ROS message and publish
             image_with_boxes = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
             self.image_publisher.publish(image_with_boxes)
 
