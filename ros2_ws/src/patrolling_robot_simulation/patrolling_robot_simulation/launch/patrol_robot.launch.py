@@ -32,6 +32,7 @@ def generate_launch_description():
         output='screen'
     )
 
+    # Launch GZ Client
     gzserver_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
@@ -39,12 +40,14 @@ def generate_launch_description():
         launch_arguments={'world': world}.items()
     )
 
+    # Launch GZ client
     gzclient_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')
         )
     )
 
+    # Set robot_state_publisher
     robot_state_publisher_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(launch_file_dir, 'robot_state_publisher.launch.py')
@@ -52,6 +55,7 @@ def generate_launch_description():
         launch_arguments={'use_sim_time': use_sim_time}.items()
     )
 
+    # Spawn turtlbot3 command
     spawn_turtlebot_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(launch_file_dir, 'spawn_turtlebot3.launch.py')
@@ -64,9 +68,8 @@ def generate_launch_description():
 
     ld = LaunchDescription()
 
-    # Add the commands to the launch description
-    ld.add_action(gazebo_model_path)  # Set the environment variable
-    ld.add_action(launch_gazebo_with_world)  # Launch Gazebo with the world
+    ld.add_action(gazebo_model_path)
+    ld.add_action(launch_gazebo_with_world)
     ld.add_action(gzserver_cmd)
     ld.add_action(gzclient_cmd)
     ld.add_action(robot_state_publisher_cmd)
