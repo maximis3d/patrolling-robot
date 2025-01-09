@@ -2,10 +2,9 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable, ExecuteProcess
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-
 
 def generate_launch_description():
     launch_file_dir = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'launch')
@@ -15,10 +14,22 @@ def generate_launch_description():
     x_pose = LaunchConfiguration('x_pose', default='-2.0')
     y_pose = LaunchConfiguration('y_pose', default='-0.5')
 
+    # Set GAZEBO_MODEL_PATH using the correct path
+    gazebo_model_path = SetEnvironmentVariable(
+        name='GAZEBO_MODEL_PATH',
+        value=os.path.join(get_package_share_directory('patrolling_robot_simulation'), 'models')
+    )
+
     world = os.path.join(
         get_package_share_directory('patrolling_robot_simulation'),
         'worlds',
-        "patrol_robot.world"
+        "small_house.world"
+    )
+
+    # Launch Gazebo directly with the specified world file
+    launch_gazebo_with_world = ExecuteProcess(
+        cmd=['gazebo', world],
+        output='screen'
     )
 
     gzserver_cmd = IncludeLaunchDescription(
@@ -54,6 +65,8 @@ def generate_launch_description():
     ld = LaunchDescription()
 
     # Add the commands to the launch description
+    ld.add_action(gazebo_model_path)  # Set the environment variable
+    ld.add_action(launch_gazebo_with_world)  # Launch Gazebo with the world
     ld.add_action(gzserver_cmd)
     ld.add_action(gzclient_cmd)
     ld.add_action(robot_state_publisher_cmd)
