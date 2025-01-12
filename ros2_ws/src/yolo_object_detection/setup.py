@@ -27,7 +27,8 @@ setup(
             "yolo_object_detection_node=yolo_object_detection.yolo_object_detection_node:main",
             "yolo_image_saver_node=yolo_object_detection.yolo_image_saver_node:main",
             "baseline_manger_node=yolo_object_detection.baseline_manager_node:main",
-            "patrolling_yolo_node=yolo_object_detection.patrolling_yolo_node:main"
+            "patrolling_yolo_node=yolo_object_detection.patrolling_yolo_node:main",
+            "patrolling_robot_node=yolo_object_detiection.patrolling_robot_node:main"
         ],
     },
 )
