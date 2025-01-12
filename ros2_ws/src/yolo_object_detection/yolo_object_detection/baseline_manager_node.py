@@ -72,7 +72,7 @@ class BaselineManagerNode(Node):
         }
 
     def baseline_callback(self, msg):
-        """Update the baseline with a new detection."""
+        """Update the baseline with a new detection and draw bounding boxes."""
         try:
             detection_data = json.loads(msg.data)
 
@@ -80,15 +80,27 @@ class BaselineManagerNode(Node):
                 if class_name not in self.baseline_objects:
                     self.baseline_objects[class_name] = []
 
+                # Create a copy of the current image to draw on
+                image_copy = self.latest_image.copy()
+
                 for box in boxes:
+                    box = [float(coord) for coord in box]  # convert box to float to work with json
+                
                     self.baseline_objects[class_name].append({
                         "bounding_box": box,
                         "pose": self.latest_pose
                     })
-                    # Save the image with a unique filename
-                    img_path = os.path.join(self.image_save_path, f"{class_name}_{box[0]}_{box[1]}.jpg")
-                    cv2.imwrite(img_path, self.latest_image)
-                    self.get_logger().info(f"Saved baseline image: {img_path}")
+
+                    # Draw boudning box
+                    x1, y1, x2, y2 = map(int, box)
+                    cv2.rectangle(image_copy, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.putText(image_copy, class_name, (x1, y1 - 10), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+                    # Save the annotated image with a unique filename
+                    img_path = os.path.join(self.image_save_path, f"{class_name}_{x1}_{y1}.jpg")
+                    cv2.imwrite(img_path, image_copy)
+                    self.get_logger().info(f"Saved baseline image with bounding box: {img_path}")
 
             self.save_baseline()
 

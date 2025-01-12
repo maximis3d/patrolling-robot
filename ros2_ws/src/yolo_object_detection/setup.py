@@ -25,8 +25,9 @@ setup(
     entry_points={
         "console_scripts": [
             "yolo_object_detection_node=yolo_object_detection.yolo_object_detection_node:main",
-            "yolo_image_saver_node=yolo_object_detection.yolo_image_saver_node:main"
-            "baseline_manger_node=yolo_object_detection.baseline_manager_node:main"
+            "yolo_image_saver_node=yolo_object_detection.yolo_image_saver_node:main",
+            "baseline_manger_node=yolo_object_detection.baseline_manager_node:main",
+            "patrolling_node=yolo_object_detection.patrolling_node:main"
         ],
     },
 )
