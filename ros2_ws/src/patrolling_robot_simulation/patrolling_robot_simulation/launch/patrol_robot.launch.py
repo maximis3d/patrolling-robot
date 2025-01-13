@@ -13,8 +13,9 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
     x_pose = LaunchConfiguration('x_pose', default='-2.0')
     y_pose = LaunchConfiguration('y_pose', default='-0.5')
+    map_file = LaunchConfiguration('map_file', default='src/patrolling_robot_simulation/maps/map.yaml')
 
-    # Set GAZEBO_MODEL_PATH using the correct path
+    # Set GAZEBO_MODEL_PATH
     gazebo_model_path = SetEnvironmentVariable(
         name='GAZEBO_MODEL_PATH',
         value=os.path.join(get_package_share_directory('patrolling_robot_simulation'), 'models')
@@ -26,13 +27,13 @@ def generate_launch_description():
         "small_house.world"
     )
 
-    # Launch Gazebo directly with the specified world file
+    # Launch Gazebo with the world file
     launch_gazebo_with_world = ExecuteProcess(
         cmd=['gazebo', world],
         output='screen'
     )
 
-    # Launch GZ Client
+    # Launch Gazebo server and client
     gzserver_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
@@ -40,14 +41,13 @@ def generate_launch_description():
         launch_arguments={'world': world}.items()
     )
 
-    # Launch GZ client
     gzclient_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')
         )
     )
 
-    # Set robot_state_publisher
+    # Launch robot state publisher
     robot_state_publisher_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(launch_file_dir, 'robot_state_publisher.launch.py')
@@ -55,7 +55,7 @@ def generate_launch_description():
         launch_arguments={'use_sim_time': use_sim_time}.items()
     )
 
-    # Spawn turtlbot3 command
+    # Spawn TurtleBot3
     spawn_turtlebot_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(launch_file_dir, 'spawn_turtlebot3.launch.py')
@@ -67,7 +67,6 @@ def generate_launch_description():
     )
 
     ld = LaunchDescription()
-
     ld.add_action(gazebo_model_path)
     ld.add_action(launch_gazebo_with_world)
     ld.add_action(gzserver_cmd)
