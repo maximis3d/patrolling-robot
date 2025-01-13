@@ -24,7 +24,7 @@ def generate_launch_description():
     world = os.path.join(
         get_package_share_directory('patrolling_robot_simulation'),
         'worlds',
-        'no_roof_small_warehouse.world'
+        'small_house.world'
     )
 
     # Launch Gazebo with the world file

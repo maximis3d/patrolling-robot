@@ -32,9 +32,11 @@ setup(
         # Including launch files
         ('share/' + package_name + '/launch', package_files('patrolling_robot_simulation/launch')),
 
+        ('share/' + package_name + '/worlds', package_files('worlds')),
+
         # Including worlds, maps, and models recursively
         ('share/' + package_name + '/maps', package_files('maps')),
-    ] + package_models('models', 'models') + package_models('worlds','worlds'),
+    ] + package_models('models', 'models'),
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='max',
