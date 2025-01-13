@@ -1,42 +1,48 @@
 from setuptools import find_packages, setup
-from glob import glob
+import os
 
 package_name = 'patrolling_robot_simulation'
+
+def package_files(directory):
+    """ Recursively collect all files under a directory. """
+    paths = []
+    for (path, _, filenames) in os.walk(directory):
+        for filename in filenames:
+            paths.append(os.path.join(path, filename))
+    return paths
+
+def package_models(directory, path_name):
+    """Collect models preserving their original structure within the models folder in the install."""
+    paths = []
+    for (path, _, filenames) in os.walk(directory):
+        for filename in filenames:
+            paths.append((os.path.join('share', package_name, path_name, os.path.relpath(path, directory)), [os.path.join(path, filename)]))
+    return paths
 
 setup(
     name=package_name,
     version='0.0.0',
     packages=find_packages(exclude=['test']),
     data_files=[
-        # Ensure the package is properly indexed
+        # Package metadata and core ROS files
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
-        
-        # Package metadata
         ('share/' + package_name, ['package.xml']),
-        
-        # Launch files
-        ('share/' + package_name + '/launch', glob('patrolling_robot_simulation/launch/*.py')),
-        
-        # Worlds directory (make sure it is inside the package directory)
-        ('share/' + package_name + '/worlds', glob('patrolling_robot_simulation/worlds/*.world')),
-        
-        # Maps directory (make sure it is inside the package directory)
-        ('share/' + package_name + '/maps', glob('patrolling_robot_simulation/maps/*')),
 
-        # Models directory (if you need models to be included)
-        ('share/' + package_name + '/models', glob('patrolling_robot_simulation/models/**/*', recursive=True))
-    ],
+        # Including launch files
+        ('share/' + package_name + '/launch', package_files('patrolling_robot_simulation/launch')),
+
+        # Including worlds, maps, and models recursively
+        ('share/' + package_name + '/maps', package_files('maps')),
+    ] + package_models('models', 'models') + package_models('worlds','worlds'),
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='max',
     maintainer_email='marstonvisuals@gmail.com',
-    description='ROS2 Package for patrolling robot simulation',
-    license='TODO: License declaration',
+    description='Patrolling robot simulation for ROS2',
+    license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
-        'console_scripts': [
-            "patrolling_robot_node=patrolling_robot_simulation.patrolling_robot_node:main"
-        ],
+        'console_scripts': [],
     },
 )
