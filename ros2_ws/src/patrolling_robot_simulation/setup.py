@@ -46,7 +46,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "patrolling_robot_node=patrolling_robot_simulation.patrolling_robot_node:main"
+            "waypoint_follower_node=patrolling_robot_simulation.waypoint_follower_node:main"
         ],
     },
 )
