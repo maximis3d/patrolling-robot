@@ -6,7 +6,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from ultralytics import YOLO
 import cv2
-import numpy as np  # Make sure to import NumPy
+import numpy as np
 from sort_tracker import Sort  # Using sort-tracker-py
 
 class PatrolNode(Node):
@@ -61,68 +61,70 @@ class PatrolNode(Node):
         # Convert detections list to a NumPy array before passing to SORT
         if detections:
             detections = np.array(detections)  # Convert the list to a NumPy array
+            tracked_objects = self.sort.update(detections)  # Get the list of tracked objects
 
-        # Use SORT to track the objects across frames
-        tracked_objects = self.sort.update(detections)  # Get the list of tracked objects
+            # Process the tracked objects
+            tracked_objects_list = []
+            for track in tracked_objects:
+                x1, y1, x2, y2 = map(int, track[:4])  # Bounding box coordinates
+                class_id = int(track[5])  # Get class ID from tracker
 
-        # Process the tracked objects
-        tracked_objects_list = []
-        for track in tracked_objects:
-            object_id = int(track[4])  # The unique object ID from SORT
-            x1, y1, x2, y2 = map(int, track[:4])  # Bounding box coordinates
-            tracked_objects_list.append({
-                "object_id": object_id,
-                "bounding_box": [x1, y1, x2, y2],
-                "confidence": track[4]
-            })
+                # Check if the class ID is valid and exists in the names dictionary
+                class_name = "Unknown"  # Default value in case class ID is invalid
+                if class_id in results[0].names:
+                    class_name = results[0].names[class_id]  # Get the class name from YOLO
 
-        # Compare tracked objects with the baseline
-        self.compare_with_baseline(tracked_objects_list)
+                tracked_objects_list.append({
+                    "bounding_box": [x1, y1, x2, y2],
+                    "confidence": track[4],
+                    "class": class_name  # Store the class name
+                })
 
-        # Show the image with detections and tracked objects
-        for obj in tracked_objects_list:
-            x1, y1, x2, y2 = obj['bounding_box']
-            label = f"ID: {obj['object_id']}, Conf: {obj['confidence']:.2f}"
-            cv2.rectangle(self.latest_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(self.latest_image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            # Compare tracked objects with the baseline and log new objects only
+            self.compare_with_baseline(tracked_objects_list)
 
-        # Show the image in an OpenCV window
-        cv2.imshow("Tracked Objects", self.latest_image)
-        cv2.waitKey(1)
+            # Show the image with detections and tracked objects
+            for obj in tracked_objects_list:
+                x1, y1, x2, y2 = obj['bounding_box']
+                label = f"Conf: {obj['confidence']:.2f}, Class: {obj['class']}"
+                cv2.rectangle(self.latest_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(self.latest_image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+            # Show the image in an OpenCV window
+            cv2.imshow("Tracked Objects", self.latest_image)
+            cv2.waitKey(1)
+        else:
+            self.get_logger().info("No objects detected in this frame.")
 
     def compare_with_baseline(self, tracked_objects):
-        """Compare tracked objects with baseline data and log new/missing objects."""
+        """Compare tracked objects with baseline data and log new objects."""
         new_objects = []
-        missing_objects = []
 
-        # Compare tracked objects with baseline
+        # Compare tracked objects with baseline and log new objects
         for tracked in tracked_objects:
             found = False
             for baseline in self.baseline_objects["detections"]:
-                if tracked['bounding_box'] == baseline['bounding_box']:
+                # Compare based on bounding box and class name
+                if tracked['bounding_box'] == baseline['bounding_box'] and tracked['class'] == baseline['class']:
                     found = True
                     break
             if not found:
                 new_objects.append(tracked)
 
-        # Identify missing objects in the baseline
-        for baseline in self.baseline_objects["detections"]:
-            found = False
-            for tracked in tracked_objects:
-                if tracked['bounding_box'] == baseline['bounding_box']:
-                    found = True
-                    break
-            if not found:
-                missing_objects.append(baseline)
+        # Log new objects (class name only)
+        for new_obj in new_objects:
+            self.get_logger().info(f"New object detected: {new_obj['class']}")
 
-        # Log new or missing objects
-        if new_objects:
-            self.get_logger().info(f"New objects detected: {new_objects}")
-            # Trigger alert for new object detection
+        # Optionally: You could add actions when new objects are detected
+        # After logging, add these new objects to the baseline (if needed)
+        self.baseline_objects["detections"].extend(new_objects)
+        self.save_baseline()
 
-        if missing_objects:
-            self.get_logger().info(f"Missing objects: {missing_objects}")
-            # Trigger alert for missing objects
+    def save_baseline(self):
+        """Save the baseline data to baseline.json."""
+        with open(self.baseline_file_path, 'w') as file:
+            json.dump(self.baseline_objects, file, indent=4)
+        self.get_logger().info(f"Baseline data saved to {self.baseline_file_path}")
 
 def main(args=None):
     rclpy.init(args=args)

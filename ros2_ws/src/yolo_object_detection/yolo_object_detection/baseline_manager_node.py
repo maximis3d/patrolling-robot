@@ -11,7 +11,7 @@ class BaselineNode(Node):
     def __init__(self):
         super().__init__('baseline_node')
 
-        # Initialize paths, load YOLO model, and set up SORT for object tracking
+        # Initialize paths, load YOLO model
         self.bridge = CvBridge()
         self.baseline_file_path = os.path.join(os.path.expanduser('~'), 'ros2_ws', 'baseline.json')
         os.makedirs(os.path.dirname(self.baseline_file_path), exist_ok=True)
@@ -25,7 +25,7 @@ class BaselineNode(Node):
         # Store latest image data
         self.latest_image = None
 
-        # Initialize baseline data
+        # Initialize baseline data (empty list initially)
         self.baseline_objects = {"detections": []}
 
         self.get_logger().info("Baseline Node Initialized with YOLOv8")
@@ -57,7 +57,7 @@ class BaselineNode(Node):
                 cv2.rectangle(self.latest_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(self.latest_image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-        # Save baseline data
+        # Add the new detections to the baseline objects list
         if detected_objects:
             self.baseline_objects["detections"].extend(detected_objects)
             self.save_baseline()
