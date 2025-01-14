@@ -1,23 +1,41 @@
-# state_manager_node.py
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
+from example_interfaces.srv import SetBool
 
 class StateManagerNode(Node):
     def __init__(self):
         super().__init__('state_manager_node')
         self.state_publisher = self.create_publisher(String, '/robot_mode', 10)
-        self.timer = self.create_timer(15.0, self.toggle_mode)
         self.mode = "baseline"
-        self.get_logger().info(f"StateManager initialized. Starting in {self.mode} mode.")
 
-    def toggle_mode(self):
-        """Switch between baseline and patrol modes automatically."""
-        self.mode = "patrol" if self.mode == "baseline" else "baseline"
+        # Create the ROS2 service for manual mode switching
+        self.mode_service = self.create_service(
+            SetBool, 'switch_mode', self.handle_mode_switch)
+        
+        self.publish_mode()
+        self.get_logger().info(f"StateManager initialized. Starting in {self.mode} mode (manual control only).")
+
+    def handle_mode_switch(self, request, response):
+        """ROS2 Service Handler for manual mode switching."""
+        if request.data:  
+            self.mode = "patrol"
+        else:
+            self.mode = "baseline"
+        
+        # Publish the new mode
+        self.publish_mode()
+        
+        response.success = True
+        response.message = f"Mode set to: {self.mode}"
+        self.get_logger().info(f"[MANUAL] Mode set to: {self.mode}")
+        return response
+
+    def publish_mode(self):
+        """Helper function to publish the current mode."""
         msg = String()
         msg.data = self.mode
         self.state_publisher.publish(msg)
-        self.get_logger().info(f"Switched mode to: {self.mode}")
 
 def main(args=None):
     rclpy.init(args=args)
