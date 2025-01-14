@@ -46,9 +46,16 @@ class WaypointFollower(Node):
                 waypoints.append(self.create_pose(x, y, yaw))
         else:
             waypoints = [
-                self.create_pose(0.0, 4.0, 1.57),
-                self.create_pose(4.4, 0.33, -1.57),
-                self.create_pose(5.15, -0.31, 3.14)
+                self.create_pose(0.0, -3.5, 0),
+                self.create_pose(5.0, -3.0, 0),
+                self.create_pose(6.0, -3.0, 0),
+                self.create_pose(5.15, -0.31, 3.14),
+                self.create_pose(-1.0, 1.0, 0.0),
+                self.create_pose(-2.0, -0.5, 0.0),
+                self.create_pose(-5.0, 0.0, 0.0),
+                self.create_pose(-8.0,0.0, 0.0),
+                self.create_pose(-8.0, -2.5,0.0),
+                self.create_pose(-2.0, -0.5, 0.0)
             ]
 
         self.waypoints = waypoints
