@@ -7,26 +7,22 @@ from cv_bridge import CvBridge
 import cv2
 from ultralytics import YOLO
 import json
-import numpy as np
 
 class PatrollingYOLONode(Node):
     def __init__(self):
         super().__init__("patrolling_yolo_node")
-        
+
         self.bridge = CvBridge()
         self.model = YOLO("yolov8n.pt")
-        self.subscription = self.create_subscription(
-            Image, "/camera/image_raw", self.image_callback, 10)
-        self.pose_subscription = self.create_subscription(
-            Pose, "/robot_pose", self.pose_callback, 10)
-
-        # Ensure image publishing is active
+        self.subscription = self.create_subscription(Image, "/camera/image_raw", self.image_callback, 10)
+        self.pose_subscription = self.create_subscription(Pose, "/robot_pose", self.pose_callback, 10)
         self.report_publisher = self.create_publisher(String, "/object_detection_report", 10)
         self.baseline_publisher = self.create_publisher(String, "/baseline_update", 10)
         self.image_publisher = self.create_publisher(Image, "/yolo_image_with_boxes", 10)
 
         self.baseline_objects = self.load_baseline()
         self.latest_pose = None
+        self.confidence_threshold = self.declare_parameter("confidence_threshold", 0.5).get_parameter_value().double_value
 
     def load_baseline(self):
         try:
@@ -48,28 +44,23 @@ class PatrollingYOLONode(Node):
         detections = results[0].boxes.data.cpu().numpy()
         current_detections = {}
 
-        # Draw bounding boxes directly on the image
         for detection in detections:
             x1, y1, x2, y2, conf, cls = detection
+            if conf < self.confidence_threshold:
+                continue
+
             class_name = self.model.names[int(cls)]
             bbox = [float(x1), float(y1), float(x2), float(y2)]
-
-            # Draw bounding box on the image
             cv2.rectangle(cv_image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-            cv2.putText(cv_image, f"{class_name} {conf:.2f}", (int(x1), int(y1) - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(cv_image, f"{class_name} {conf:.2f}", (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-            # Collect the detection data for comparison
             if class_name not in current_detections:
                 current_detections[class_name] = [bbox]
             else:
                 current_detections[class_name].append(bbox)
 
-        # **Publish the annotated image with bounding boxes**
         image_with_boxes_msg = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
         self.image_publisher.publish(image_with_boxes_msg)
-
-        # Check for missing or new objects
         self.compare_with_baseline(current_detections)
 
     def compare_with_baseline(self, current_detections):
