@@ -1,137 +1,132 @@
-# patrolling_yolo_node.py (Updated with Anomaly Handling)
+import os
+import json
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Pose
-from std_msgs.msg import String
 from cv_bridge import CvBridge
 from ultralytics import YOLO
-import json
-import math
+import cv2
+import numpy as np  # Make sure to import NumPy
+from sort_tracker import Sort  # Using sort-tracker-py
 
-class PatrollingYOLONode(Node):
+class PatrolNode(Node):
     def __init__(self):
-        super().__init__("patrolling_yolo_node")
+        super().__init__('patrol_node')
 
-        # Initialize variables
+        # Initialize paths, load YOLO model, and set up SORT for object tracking
         self.bridge = CvBridge()
-        self.model = YOLO("yolov8n.pt")
-        self.baseline_objects = self.load_baseline()
-        self.current_mode = "patrol"
-        self.latest_pose = None
-        self.confidence_threshold = 0.5
+        self.baseline_file_path = os.path.join(os.path.expanduser('~'), 'ros2_ws', 'baseline.json')
+        os.makedirs(os.path.dirname(self.baseline_file_path), exist_ok=True)
 
-        # Subscribers and Publishers
-        self.mode_subscription = self.create_subscription(String, '/robot_mode', self.mode_callback, 10)
+        # Load YOLOv8 model from ultralytics
+        self.model = YOLO('yolov8n.pt')  # Using YOLOv8 Nano pre-trained model
+
+        # Create SORT tracker object
+        self.sort = Sort()  # Create SORT tracker instance
+
+        # Subscribe to the robot's Camera Feed
         self.image_subscription = self.create_subscription(Image, '/camera/image_raw', self.image_callback, 10)
-        self.pose_subscription = self.create_subscription(Pose, '/robot_pose', self.pose_callback, 10)
-        self.anomaly_publisher = self.create_publisher(String, '/anomaly_alert', 10)
+
+        # Load the baseline data (previous detections)
+        self.baseline_objects = self.load_baseline()
+
+        self.get_logger().info("Patrol Node Initialized")
 
     def load_baseline(self):
-        try:
-            with open("baseline.json", "r") as file:
-                return json.load(file)
-        except (FileNotFoundError, json.JSONDecodeError):
-            self.get_logger().warn("No valid baseline found.")
-            return {}
-
-    def mode_callback(self, msg):
-        self.current_mode = msg.data
-        self.get_logger().info(f"Mode updated: {self.current_mode}")
-
-    def pose_callback(self, msg):
-        self.latest_pose = {
-            "x": msg.position.x,
-            "y": msg.position.y,
-            "z": msg.position.z
-        }
+        """Load baseline data from the baseline.json."""
+        if not os.path.exists(self.baseline_file_path):
+            self.get_logger().warn("Baseline file not found. Please ensure baseline data is created first.")
+            return {"detections": []}
+        
+        with open(self.baseline_file_path, 'r') as file:
+            return json.load(file)
 
     def image_callback(self, msg):
-        if self.current_mode != "patrol":
-            return
+        """Receive camera image, perform object detection, and compare with baseline."""
+        self.latest_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         
-        # Convert image and perform YOLO detection
-        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        results = self.model(cv_image)
-        detections = results[0].boxes.data.cpu().numpy()
-        current_detections = {}
+        # Run YOLOv8 object detection
+        results = self.model(self.latest_image)
 
-        # Process YOLO results
-        for detection in detections:
-            x1, y1, x2, y2, conf, cls = detection
-            if conf < self.confidence_threshold:
-                continue
+        # Process detections and get bounding boxes
+        detections = []
+        for result in results[0].boxes.data.tolist():  # Each result corresponds to a detection box
+            class_id = int(result[5])  # class ID (for the detected object)
+            confidence = float(result[4])  # detection confidence
+            x1, y1, x2, y2 = map(int, result[:4])  # bounding box coordinates
 
-            class_name = self.model.names[int(cls)]
-            bbox = [float(x1), float(y1), float(x2), float(y2)]
+            if confidence > 0.5:  # Only consider high-confidence detections
+                detections.append([x1, y1, x2, y2, confidence])
 
-            if class_name not in current_detections:
-                current_detections[class_name] = [bbox]
-            else:
-                current_detections[class_name].append(bbox)
+        # Convert detections list to a NumPy array before passing to SORT
+        if detections:
+            detections = np.array(detections)  # Convert the list to a NumPy array
 
-        # Compare detections with baseline
-        self.compare_with_baseline(current_detections)
+        # Use SORT to track the objects across frames
+        tracked_objects = self.sort.update(detections)  # Get the list of tracked objects
 
-    def compare_with_baseline(self, current_detections):
-        """Compare detected objects with the baseline to detect anomalies."""
-        anomalies_detected = False
+        # Process the tracked objects
+        tracked_objects_list = []
+        for track in tracked_objects:
+            object_id = int(track[4])  # The unique object ID from SORT
+            x1, y1, x2, y2 = map(int, track[:4])  # Bounding box coordinates
+            tracked_objects_list.append({
+                "object_id": object_id,
+                "bounding_box": [x1, y1, x2, y2],
+                "confidence": track[4]
+            })
 
-        # Check for new or missing objects
-        for class_name, boxes in current_detections.items():
-            if class_name not in self.baseline_objects:
-                self.report_anomaly(f"New object detected: {class_name}")
-                anomalies_detected = True
-            else:
-                for box in boxes:
-                    if not self.is_object_consistent(class_name, box):
-                        self.report_anomaly(f"Object moved: {class_name}")
-                        anomalies_detected = True
+        # Compare tracked objects with the baseline
+        self.compare_with_baseline(tracked_objects_list)
 
-        # Check for missing objects
-        for class_name in self.baseline_objects.keys():
-            if class_name not in current_detections:
-                self.report_anomaly(f"Object missing: {class_name}")
-                anomalies_detected = True
+        # Show the image with detections and tracked objects
+        for obj in tracked_objects_list:
+            x1, y1, x2, y2 = obj['bounding_box']
+            label = f"ID: {obj['object_id']}, Conf: {obj['confidence']:.2f}"
+            cv2.rectangle(self.latest_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(self.latest_image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-        # Optional: Stop the robot if an anomaly is detected
-        if anomalies_detected:
-            self.stop_robot()
+        # Show the image in an OpenCV window
+        cv2.imshow("Tracked Objects", self.latest_image)
+        cv2.waitKey(1)
 
-    def is_object_consistent(self, class_name, box):
-        """Check if an object's position is consistent with the baseline."""
-        for baseline_entry in self.baseline_objects[class_name]:
-            baseline_box = baseline_entry['bounding_box']
-            baseline_pose = baseline_entry['pose']['position']
+    def compare_with_baseline(self, tracked_objects):
+        """Compare tracked objects with baseline data and log new/missing objects."""
+        new_objects = []
+        missing_objects = []
 
-            # Check if the detected object is within a certain distance from the baseline
-            baseline_x = (baseline_box[0] + baseline_box[2]) / 2
-            baseline_y = (baseline_box[1] + baseline_box[3]) / 2
-            detected_x = (box[0] + box[2]) / 2
-            detected_y = (box[1] + box[3]) / 2
+        # Compare tracked objects with baseline
+        for tracked in tracked_objects:
+            found = False
+            for baseline in self.baseline_objects["detections"]:
+                if tracked['bounding_box'] == baseline['bounding_box']:
+                    found = True
+                    break
+            if not found:
+                new_objects.append(tracked)
 
-            distance = math.sqrt((detected_x - baseline_x)**2 + (detected_y - baseline_y)**2)
-            if distance < 1.0:  # Tolerance for minor variations
-                return True
-        return False
+        # Identify missing objects in the baseline
+        for baseline in self.baseline_objects["detections"]:
+            found = False
+            for tracked in tracked_objects:
+                if tracked['bounding_box'] == baseline['bounding_box']:
+                    found = True
+                    break
+            if not found:
+                missing_objects.append(baseline)
 
-    def report_anomaly(self, message):
-        """Publish an anomaly alert."""
-        self.get_logger().warn(message)
-        alert_msg = String()
-        alert_msg.data = message
-        self.anomaly_publisher.publish(alert_msg)
+        # Log new or missing objects
+        if new_objects:
+            self.get_logger().info(f"New objects detected: {new_objects}")
+            # Trigger alert for new object detection
 
-    def stop_robot(self):
-        """Stop the robot in case of an anomaly."""
-        self.get_logger().info("Stopping the robot due to detected anomaly.")
-        stop_msg = String()
-        stop_msg.data = "stop"
-        self.anomaly_publisher.publish(stop_msg)
+        if missing_objects:
+            self.get_logger().info(f"Missing objects: {missing_objects}")
+            # Trigger alert for missing objects
 
 def main(args=None):
     rclpy.init(args=args)
-    node = PatrollingYOLONode()
+    node = PatrolNode()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

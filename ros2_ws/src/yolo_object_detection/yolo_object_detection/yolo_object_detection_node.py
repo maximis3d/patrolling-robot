@@ -1,107 +1,112 @@
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
-from geometry_msgs.msg import Pose
 from std_msgs.msg import String
-from cv_bridge import CvBridge
 import cv2
-from ultralytics import YOLO
 import json
+import os
 
-class PatrollingYOLONode(Node):
+class RealObjectDetectionNode(Node):
     def __init__(self):
-        super().__init__('patrolling_yolo_node')
+        super().__init__('real_object_detection_node')
         
-        self.bridge = CvBridge()
-        self.model = YOLO('yolov8n.pt')
-        self.subscription = self.create_subscription(
-            Image, '/camera/image_raw', self.image_callback, 10)
-        self.pose_subscription = self.create_subscription(
-            Pose, '/robot_pose', self.pose_callback, 10)
+        # ROS2 Publisher
+        self.publisher = self.create_publisher(String, '/baseline_update', 10)
 
-        self.report_publisher = self.create_publisher(String, '/object_detection_report', 10)
-        self.baseline_publisher = self.create_publisher(String, '/baseline_update', 10)
-        self.image_publisher = self.create_publisher(Image, '/yolo_image_with_boxes', 10)
+        # Load YOLO model and classes
+        self.net = cv2.dnn.readNet("yolov3.weights", "yolov3.cfg")
+        self.classes = self.load_classes("coco.names")
+        self.layer_names = self.net.getUnconnectedOutLayersNames()
+        
+        # Initialize camera
+        self.cap = cv2.VideoCapture(0)  # Open default camera
+        self.timer = self.create_timer(0.1, self.detect_objects)  # Real-time detection (10 Hz)
 
-        self.baseline_objects = self.load_baseline()
-        self.latest_pose = None
+        self.get_logger().info("Real Object Detection Node Initialized with YOLOv3")
 
-    def load_baseline(self):
-        try:
-            with open('baseline.json', 'r') as file:
-                baseline_data = json.load(file)
-                self.get_logger().info("Baseline successfully loaded.")
-                return baseline_data
-        except (FileNotFoundError, json.JSONDecodeError):
-            self.get_logger().warn("No valid baseline found.")
-            return {}
+    def load_classes(self, filename):
+        """Load the COCO classes."""
+        with open(filename, "r") as f:
+            return [line.strip() for line in f.readlines()]
 
-    def pose_callback(self, msg):
-        """Update the latest robot pose."""
-        self.latest_pose = {
-            "position": {
-                "x": msg.position.x,
-                "y": msg.position.y,
-                "z": msg.position.z
-            },
-            "orientation": {
-                "x": msg.orientation.x,
-                "y": msg.orientation.y,
-                "z": msg.orientation.z,
-                "w": msg.orientation.w
-            }
-        }
+    def detect_objects(self):
+        """Capture video feed and run object detection."""
+        ret, frame = self.cap.read()
+        if not ret:
+            self.get_logger().warn("Failed to capture frame from camera.")
+            return
 
-    def image_callback(self, msg):
-        """Compare the current image against the baseline."""
-        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        results = self.model(cv_image)
-        detections = results[0].boxes.data.cpu().numpy()
-        current_detections = {}
+        # Prepare the image for YOLO
+        height, width, _ = frame.shape
+        blob = cv2.dnn.blobFromImage(frame, 1/255.0, (416, 416), swapRB=True, crop=False)
+        self.net.setInput(blob)
 
-        for detection in detections:
-            x1, y1, x2, y2, conf, cls = detection
-            class_name = self.model.names[int(cls)]
-            bbox = [x1, y1, x2, y2]
+        # Perform forward pass and get detections
+        outputs = self.net.forward(self.layer_names)
+        boxes, confidences, class_ids = self.process_detections(outputs, width, height)
 
-            if class_name not in current_detections:
-                current_detections[class_name] = [bbox]
-            else:
-                current_detections[class_name].append(bbox)
+        # Create detection message for ROS2
+        detection_data = self.create_detection_data(boxes, class_ids)
 
-        # Check for missing or new objects
-        self.compare_with_baseline(current_detections)
+        # Publish detection data
+        msg = String()
+        msg.data = json.dumps(detection_data)
+        self.publisher.publish(msg)
 
-    def compare_with_baseline(self, current_detections):
-        """Compare current detections with the stored baseline."""
-        for class_name, boxes in current_detections.items():
-            if class_name not in self.baseline_objects:
-                self.log_unexpected_object(class_name, boxes)
-            else:
-                # Check for missing objects
-                for baseline_entry in self.baseline_objects[class_name]:
-                    if not self.is_object_present(baseline_entry["bounding_box"], boxes):
-                        self.get_logger().warn(f"Object missing: {class_name}")
+        # Display detections on the video feed
+        self.display_detections(frame, boxes, class_ids)
 
-    def is_object_present(self, baseline_box, current_boxes):
-        """Check if a baseline object is present in the current frame."""
-        for box in current_boxes:
-            if self.calculate_iou(baseline_box, box) > 0.5:
-                return True
-        return False
+    def process_detections(self, outputs, width, height):
+        """Process YOLO detections."""
+        boxes, confidences, class_ids = [], [], []
 
-    def log_unexpected_object(self, class_name, boxes):
-        """Log new objects detected."""
-        for box in boxes:
-            report_msg = String()
-            report_msg.data = f"Unexpected Object Detected: {class_name} at {box}"
-            self.report_publisher.publish(report_msg)
-            self.get_logger().warn(report_msg.data)
+        for output in outputs:
+            for detection in output:
+                scores = detection[5:]
+                class_id = int(scores.argmax())
+                confidence = scores[class_id]
+
+                if confidence > 0.5:  # Detection threshold
+                    center_x, center_y, w, h = (
+                        int(detection[0] * width),
+                        int(detection[1] * height),
+                        int(detection[2] * width),
+                        int(detection[3] * height)
+                    )
+                    x = int(center_x - w / 2)
+                    y = int(center_y - h / 2)
+                    boxes.append([x, y, x + w, y + h])
+                    confidences.append(float(confidence))
+                    class_ids.append(class_id)
+        
+        return boxes, confidences, class_ids
+
+    def create_detection_data(self, boxes, class_ids):
+        """Format detection data for the baseline manager."""
+        detection_data = {}
+        for i, box in enumerate(boxes):
+            class_name = self.classes[class_ids[i]]
+            if class_name not in detection_data:
+                detection_data[class_name] = []
+            detection_data[class_name].append(box)
+        return detection_data
+
+    def display_detections(self, frame, boxes, class_ids):
+        """Show the detected objects with bounding boxes."""
+        for i, box in enumerate(boxes):
+            x1, y1, x2, y2 = box
+            label = self.classes[class_ids[i]]
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        cv2.imshow("Real-Time Object Detection", frame)
+        cv2.waitKey(1)
 
 def main(args=None):
     rclpy.init(args=args)
-    node = PatrollingYOLONode()
+    node = RealObjectDetectionNode()
     rclpy.spin(node)
+    node.cap.release()
+    cv2.destroyAllWindows()
     node.destroy_node()
     rclpy.shutdown()
 
