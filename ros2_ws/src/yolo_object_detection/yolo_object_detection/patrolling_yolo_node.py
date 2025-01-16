@@ -28,11 +28,11 @@ class PatrolNode(Node):
         except Exception as e:
             self.get_logger().error(f"Unexpected error while creating directory: {e}")
 
-        # Load YOLOv8 model from ultralytics
-        self.model = YOLO("yolov8n.pt")  # Using YOLOv8 Nano pre-trained model
+        # Load YOLOv8 model
+        self.model = YOLO("yolov8n.pt") 
 
         # Create SORT tracker object
-        self.sort = Sort()  # Create SORT tracker instance
+        self.sort = Sort() 
 
         # Subscribe to the robot"s Camera Feed
         self.image_subscription = self.create_subscription(Image, "/camera/image_raw", self.image_callback, 10)
@@ -81,7 +81,7 @@ class PatrolNode(Node):
             tracked_objects_list = []
             for track in tracked_objects:
                 x1, y1, x2, y2 = map(int, track[:4])
-                class_id = int(track[5]) if len(track) > 5 else -1  # Handle invalid class_id
+                class_id = int(track[5]) if len(track) > 5 else -1 
 
                 class_name = "Unknown"
                 if class_id in results[0].names:
