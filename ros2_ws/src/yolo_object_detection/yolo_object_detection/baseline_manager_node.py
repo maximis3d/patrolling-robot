@@ -20,11 +20,11 @@ class BaselineNode(Node):
         # Define the relative path to the "baseline.json" file within the package
         self.baseline_file_path = os.path.join(package_directory, "baseline.json")
 
-        # Ensure the directory exists (in this case, it should already exist since it"s the package root)
+        # Ensure the directory exists 
         os.makedirs(os.path.dirname(self.baseline_file_path), exist_ok=True)
 
         # Load YOLOv8 model from ultralytics
-        self.model = YOLO("yolov8n.pt")  # Using YOLOv8 Nano pre-trained model
+        self.model = YOLO("yolov8n.pt") 
 
         # Subscribe to the robot"s Camera Feed
         self.image_subscription = self.create_subscription(Image, "/camera/image_raw", self.image_callback, 10)
