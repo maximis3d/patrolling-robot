@@ -1,7 +1,7 @@
+.venv
 build/
 install/
 log/
 /dataset
 .vscode
-*.json
 baseline_images/

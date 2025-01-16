@@ -7,10 +7,10 @@ import os
 
 class RealObjectDetectionNode(Node):
     def __init__(self):
-        super().__init__('real_object_detection_node')
+        super().__init__("real_object_detection_node")
         
         # ROS2 Publisher
-        self.publisher = self.create_publisher(String, '/baseline_update', 10)
+        self.publisher = self.create_publisher(String, "/baseline_update", 10)
 
         # Load YOLO model and classes
         self.net = cv2.dnn.readNet("yolov3.weights", "yolov3.cfg")

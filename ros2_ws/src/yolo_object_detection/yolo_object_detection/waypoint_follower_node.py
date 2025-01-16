@@ -6,7 +6,7 @@ from scipy.spatial.transform import Rotation as R
 
 def euler_to_quaternion(roll, pitch, yaw):
     """Convert Euler angles to a quaternion."""
-    r = R.from_euler('xyz', [roll, pitch, yaw], degrees=False)
+    r = R.from_euler("xyz", [roll, pitch, yaw], degrees=False)
     return r.as_quat()
 
 class WaypointFollower(Node):
@@ -14,7 +14,7 @@ class WaypointFollower(Node):
     ROS2 Node to independently follow waypoints using Nav2.
     """
     def __init__(self):
-        super().__init__('waypoint_follower')
+        super().__init__("waypoint_follower")
         self.nav = BasicNavigator()
 
         # Predefined waypoints to be followed independently
